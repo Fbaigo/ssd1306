@@ -1,36 +1,49 @@
 /*!
- *  @file 	   ssdFonts.h
- *  @brief     Fonts for SSD1306 display controller.
- *  @details   Fonts are not designed, some can be downloaded from the following link:
- *  		   https://lexus2k.github.io/ssd1306/group___l_c_d___f_o_n_t_s.html (all rights reserved to lexus2k)
+ *  @file 	   	ssd_fonts.h
+ *  @brief     	Fonts for SSD1306 display controller.
+ *  @details   	ASCII fonts are not designed, some can be downloaded from the following link:
+ *  		   	https://lexus2k.github.io/ssd1306/group___l_c_d___f_o_n_t_s.html (all rights reserved to lexus2k)
  *
- *			   All the fonts should be written as:
- *			   ssd1306_font5x7[][character's width]. Each new ASCII character should be a new { } symbol.
+ *			   	All ASCII fonts should be written as:
+ *			   	ssd1306_font[][SSD1306_FONT_CHAR_WIDTH]. Each new ASCII character should be a new { } symbol
  *
- *			   For each new font please edit SSD1306_FONT_MAXCHARS_LINE as:
- *			   (int) (S1306_MAX_SEGMENT / S1306_FONT_WIDTH) - 1. Adjust +- 1
- *			   Where
- *			   S1306_MAX_SEGMENT is the maximum horizontal lenght (fixed 128).
- *			   S1306_FONT_WIDTH is the font's character width (needed for ssdOledSendAscii() ).
- *			   This allow you to set how many characters can be presented per each line over the display.
+ *			   	For each new font please edit SSD1306_FONT_MAXCHARS_LINE as:
+ *			   	(int) (S1306_MAX_SEGMENT / SSD1306_FONT_CHAR_WIDTH) +/- 1 (you may adjust +/- pixel)
+ *				
+				For example: (int) (128 / 6) - 1 = 20 
  *
- *  @warning   For inline writing correction the SSD1306_FONT_MAXCHARS_LINE macro should be edited per font.
- *  @author    Federico Baigorria
- *  @date      03-24-2020
- *  @copyright GNU Public License.
- */
+ *			   	S1306_MAX_SEGMENT is the maximum horizontal lenght (fixed 128)
+ *			   	SSD1306_FONT_CHAR_WIDTH is the font's character width, required by ssd1306_print_ascii() function
+ *			   	This allows you to set how many characters can be presented per each line over the display
+ *
+ * 				A symbol's self made font is also included
+ * 				Select one of the available ASCII fonts:
+ * 				SSD1306_ASCII_DIGITAL5X7_FONT
+ * 				SSD1306_ASCII_CALIBRI6X7_FONT
+ *
+ *  @warning   	For inline writing correction the SSD1306_FONT_MAXCHARS_LINE macro should be edited per font.
+ *  @author    	Federico Baigorria
+ *  @date      	11-29-2025
+ *  @copyright 	GNU Public License.
+*/
 
 #ifndef __SSD1306_INC_SSDFONTS_H__
 #define __SSD1306_INC_SSDFONTS_H__
 
-///! Editable by user. ONLY set one font at a time
-#define SSD1306_DIGITAL5X7_FONT		0
-#define SSD1306_CALIBRI6X7_FONT		1
-#define SSD1306_SYMBOLS_FONT		1
+#include <stdint.h>
 
-#if SSD1306_DIGITAL5X7_FONT && ! SSD1306_CALIBRI6X7_FONT
-#define SSD1306_FONT_MAXCHARS_LINE		23
+///! SSD1306 hardware limit
+#define S1306_MAX_SEGMENT			128		///! OLED Display maximum width (fixed)
+#define S1306_MAX_PAGE				8		///! OLED Display maximum height (in pages). For a 128x32 set 4 and for 128x64 it's 8
+
+///! Fonts
+#define SSD1306_ASCII_DIGITAL5X7_FONT		0
+#define SSD1306_ASCII_CALIBRI6X7_FONT		1
+#define SSD1306_SYMBOLS_FONT				1
+
+#if SSD1306_ASCII_DIGITAL5X7_FONT && !SSD1306_ASCII_CALIBRI6X7_FONT
 #define SSD1306_FONT_CHAR_WIDTH			5
+#define SSD1306_FONT_MAXCHARS_LINE		(uint32_t) (S1306_MAX_SEGMENT / SSD1306_FONT_CHAR_WIDTH) -1
 
 const uint8_t ssd1306_font[][SSD1306_FONT_CHAR_WIDTH] =
 {
@@ -134,9 +147,9 @@ const uint8_t ssd1306_font[][SSD1306_FONT_CHAR_WIDTH] =
 
 #endif
 
-#if SSD1306_CALIBRI6X7_FONT && ! SSD1306_DIGITAL5X7_FONT
-#define SSD1306_FONT_MAXCHARS_LINE		20
+#if SSD1306_ASCII_CALIBRI6X7_FONT && !SSD1306_ASCII_DIGITAL5X7_FONT
 #define SSD1306_FONT_CHAR_WIDTH			6
+#define SSD1306_FONT_MAXCHARS_LINE		(uint32_t) (S1306_MAX_SEGMENT / SSD1306_FONT_CHAR_WIDTH) -1
 
 const uint8_t ssd1306_font[][SSD1306_FONT_CHAR_WIDTH]=
 {

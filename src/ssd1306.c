@@ -14,131 +14,102 @@
  */
 
 #include "ssd1306.h"
+#define SSD1306_STARTED		1
+
+typedef void (*i2c_write_fn)(uint32_t const, uint8_t*, uint32_t);
+typedef void (*i2c_hw_init_fn)(void);
 
 typedef struct {
 	uint32_t slave_addr;
-	void (*i2c_write)(uint32_t const slave_addr, uint8_t *data, uint32_t nbytes);
-	void (*i2c_hw_init)(void);
+	uint32_t is_started;
+	i2c_write_fn i2c_write;
+	i2c_hw_init_fn i2c_hw_init;
 } ssd1306_devt;
 
 static ssd1306_devt ssd1306_device;
 
-/**
-@fn static void ssdOledSendCmd(uint8_t ssdCmd)
-@detail Sends only one command byte.
-
-@param ssdCmd command to be sent to the SSD1306 controller.
-@return void
-*/
-static void ssdOledSendCmd(uint8_t ssdCmd){
-	uint8_t sddPacket[] = {S1306_CMD_ONLY, ssdCmd};
-	oled_i2c_write(sddPacket, sizeof(sddPacket)/sizeof(uint8_t));
+static void ssd1306_i2c_write(uint8_t *data, uint32_t bytes){
+	ssd1306_device.i2c_write(
+		ssd1306_device.slave_addr,
+		data, 
+		bytes
+	);
 }
 
 /**
-@fn static void ssdOledSendData(uint8_t ssdPixel)
-@detail Sends only one data byte. Depending on the SSD1306's configuration it may be seen
-		as a vertical or horizontal 8 pixels group.
-
-@param ssdPixel data to be sent to the SSD1306 controller
-@return void
+* @fn void ssd1306_device_startup(uint32_t const slave_addr, i2c_write_fn writer_fn, i2c_hw_init_fn hw_init_fn)
+* @brief SSD1306 device initialization
+* @details
+* The SSD1306 device abstraction requires a slave address, an I2C writer function and an I2C hardware init function
+* This function will send a series of default commands for initialization and these can be found in the ssd1306.h header file (ssd1306_init_cfg)
+* @warning
+* This is the first function to be called
+* @return void
 */
-static void ssdOledSendData(uint8_t ssdPixel){
-	uint8_t sddPacket[] = {S1306_CMD_END_2RAM, ssdPixel};
-	oled_i2c_write(sddPacket, sizeof(sddPacket)/sizeof(uint8_t));
+
+void ssd1306_device_startup(uint32_t const slave_addr, i2c_write_fn writer_fn, i2c_hw_init_fn hw_init_fn){
+	ssd1306_device.slave_addr = slave_addr;
+	ssd1306_device.i2c_write = writer_fn;
+	ssd1306_device.i2c_hw_init = hw_init_fn;
+	ssd1306_device.is_started = !SSD1306_STARTED;
+
+	ssd1306_i2c_write(ssd1306_init_cfg, sizeof(ssd1306_init_cfg)/sizeof(uint8_t));
+
+	///! TODO: Verify
+	ssd1306_device.is_started = SSD1306_STARTED;
 }
 
 /**
-@fn static void ssdOledSendAscii(uint8_t ssdFontidx)
-@detail Writes an ASCII character in the display. Since this is a full graphic display a text font
-		is needed. The ssd1306_font[][] matrix provides it. First index is the ASCII character coordinate
-		starting from 0x20 and the second index directs each pixel group (the character's width)
-
-@warning Since the character's width is the number of data bytes to be sent then sddPacket packet structure
-		 must be updated whenever a new font is used.
-@param ssdPixel data to be sent to the SSD1306 controller
-@return void
+* @fn static void ssd1306_print_ascii(uint8_t ascii_char)
+* @brief Writes an ASCII character in the display
+* @details 
+* Since this is a full graphic display a text font is needed (see ssd1306_font[X][Y] in ssd_fonts.h)
+* Index [X] is the ASCII character starting from 0x20 
+* Index [Y] prints the pixel group (character's width)
+* 
+* The character's width sets the number of data bytes to be sent written in the ascii_packet packet array
+* @param ascii_char ascii character to be print
+* @return void
 */
-static void ssdOledSendAscii(uint8_t ssdFontidx){
+
+void ssd1306_print_ascii(uint8_t ascii_char){
 	uint8_t idx;
-	///! ASCII Matrix Offset. First ASCII character 0x20 is the first table element
-	uint8_t ssdOffset = (ssdFontidx - 0x20);
-	///! Transmit buffer for ASCII character (data)
-	uint8_t sddPacket[SSD1306_FONT_CHAR_WIDTH + 1];
-	///! Send data start command
-	sddPacket[0] = S1306_CMD_END_2RAM;
+	uint8_t offset = (ascii_char - 0x20);
+	uint8_t ascii_packet[SSD1306_FONT_CHAR_WIDTH + 1];
+
+	ascii_packet[0] = S1306_CMD_END_2RAM;
 
 	for(idx = 0; idx < SSD1306_FONT_CHAR_WIDTH; idx++){
-		sddPacket[idx + 1] = ssd1306_font[ssdOffset][idx];
+		ascii_packet[idx + 1] = ssd1306_font[offset][idx];
 	}
 
-	oled_i2c_write(sddPacket, sizeof(sddPacket)/sizeof(uint8_t));
+	ssd1306_i2c_write(ascii_packet, sizeof(ascii_packet)/sizeof(uint8_t));
 }
 
-/** Public functions
- */
-
 /**
-@fn void ssdI2CHardwareInit(void)
-@detail SSD1306 Hardware init configuration for I2C communication.
-
-@warning This function is hardware dependent and must be configured by the user.
-@return void
+* @fn void ssd1306_set_page_offset(uint8_t page, uint8_t column_addr)
+* @details 
+* Set a new start page address at ssdPage | START_PAGE_VAL. The starting column address is
+* set by default at the very beginning (0). It may change in the future.
+* Column address is compound by two nibbles (first low then high) corresponding to 0 - 127.
+* First nibble is 0x00 | low starting column address.
+* Second nibble is 0x10 | high starting column address.
+* 
+* @warning Use this only when the display has been configured as page mapping mode.
+* 
+* @return void
 */
-void ssdI2CHardwareInit(void){
-	//Board_I2C_Init(I2C0);
-	//Chip_I2C_SetClockRate(I2C0, 1000000);
-	//Chip_I2C_SetMasterEventHandler(I2C0, Chip_I2C_EventHandlerPolling);
+void ssd1306_set_page_offset(uint8_t page, uint8_t column_addr){
+	page %= S1306_MAX_PAGE;
 
-	int i2c_master_port = I2C_NUM_0;
-    i2c_config_t conf;
-
-    conf.mode = I2C_MODE_MASTER;
-    conf.sda_io_num = I2C_EXAMPLE_MASTER_SDA_IO;
-    conf.sda_pullup_en = 1;
-    conf.scl_io_num = I2C_EXAMPLE_MASTER_SCL_IO;
-    conf.scl_pullup_en = 1;
-    conf.clk_stretch_tick = 3000; // 300 ticks, Clock stretch is about 210us, you can make changes according to the actual situation.
+	uint8_t data[] = {	
+		S1306_START_PAGE_VAL | page,							///! Set new start page
+		S1306_PAGE_LOWER_COL | (column_addr & 0x0F),			///! Set starting column low nibble
+		S1306_PAGE_HIGHER_COL | ((column_addr & 0xF0) >> 4), 	///! Set starting column high nibble. End transmission.
+		S1306_NOP
+	};
 	
-    ESP_ERROR_CHECK(i2c_driver_install(i2c_master_port, conf.mode));
-    ESP_ERROR_CHECK(i2c_param_config(i2c_master_port, &conf));
-    //return ESP_OK;
-}
-
-/**
-@fn void ssdOledInit(void)
-@detail SSD1306 OLED display Init. Whole command stream configuration is written in ssdInitDatagram[]
-		Display is configured for:
-		*** PENDING ***
-
-@param ssdPixel data to be sent to the SSD1306 controller
-@return void
-*/
-void ssdOledInit(void){
-	oled_i2c_write(ssdInitDatagram, sizeof(ssdInitDatagram)/sizeof(uint8_t));
-}
-
-/**
-@fn void ssdOledSetPageOrigin(uint8_t ssdPage)
-@detail Set a new start page address at ssdPage | START_PAGE_VAL. The starting column address is
-		set by default at the very beginning (0). It may change in the future.
-		Column address is compound by two nibbles (first low then high) corresponding to 0 - 127.
-		First nibble is 0x00 | low starting column address.
-		Second nibble is 0x10 | high starting column address.
-
-@warning Use this only when the display has been configured as page mapping mode.
-
-@return void
-*/
-void ssdOledSetPageOffset(uint8_t ssdPage, uint8_t ssdColumnAddr){
-	///! Page index limit
-	ssdPage %= S1306_MAX_PAGE;
-
-	uint8_t sddPacket[] = {	0x80,START_PAGE_VAL | ssdPage,				///! Set new start page
-							0x80,0x00 | (ssdColumnAddr & 0x0F),			///! Set starting column low nibble
-							0x00,0x10 | ((ssdColumnAddr & 0xF0) >> 4) 	///! Set starting column high nibble. End transmission.
-							};
-	oled_i2c_write(sddPacket, sizeof(sddPacket)/sizeof(uint8_t));
+	ssd1306_i2c_write(data, sizeof(data)/sizeof(uint8_t));
 }
 
 /**
@@ -216,7 +187,7 @@ void ssdOledSetText(uint8_t *ssdTxt, uint8_t enPageSwitch){
 
 	while(*ssdTxt){
 		///! Send the formatted ASCII character
-		ssdOledSendAscii(*ssdTxt);
+		ssd1306_print_ascii(*ssdTxt);
 		ssdTxt++;
 
 		if(enPageSwitch){

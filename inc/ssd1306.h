@@ -1,6 +1,6 @@
 /*!
  *  @file 	   ssd1306.h
- *  @brief     SSD1306 128x32 OLED library.
+ *  @brief     SSD1306 128x32 / 128x64 OLED library.
  *  @details   User can set different parameters detailed below.
  *  		   If an OS is used set QC_FRTOS to 1 (only portable for FreeRTOS)
  *  		   If dynamic image generation is needed set QC_MEM_DYN to 1
@@ -20,18 +20,11 @@
 #ifndef __SSD1306_INC_SSD1306_H__
 #define __SSD1306_INC_SSD1306_H__
 
-/** DO NOT EDIT
- */
-
 ///! Self header files
 #include <stdint.h>
-#include "ssdHardware.h"
+#include "ssd_hw_iface.h"
+#include "ssd_fonts.h"
 #include "ssdTypes.h"
-#include "ssdFonts.h"
-
-///! SSD1306 hardware limit
-#define S1306_MAX_SEGMENT			128		///! OLED Display maximum width
-#define S1306_MAX_PAGE				4		///! OLED Display maximum height (in pages). For a 128x32 set 4
 
 ///! Default slave address for SSD1306 Oled display
 #define	S1306_SLAVE_ADDR			0x3C		///! 7 bits long address 011110(SAO). SAO bit may be 0 o 1. Default val 0x3C
@@ -43,6 +36,7 @@
 #define S1306_DISP_OFFSET 			0x80,0xD3	///! Hardware configuration. This is a double command (0xD3 Command + Data)
 #define S1306_CHARGE_PUMP 			0x80,0x8D	///! Charge pump (special). This is a double command (0x8D Command + Data)
 #define S1306_START_LINE_ADDR 		0x80,0x40	///! Hardware configuration. Set display RAM start line
+#define S1306_START_PAGE_VAL		0x80,0xB0
 #define S1306_MEM_ADDR_MODE 		0x80,0x20	///! Addressing setting. This is a double command (0x20 Command + Data)
 #define S1306_PAGE_LOWER_COL 		0x80,0x00	///! Addressing setting. Set lower nibble of column start address. Only page addressing mode
 #define S1306_PAGE_HIGHER_COL 		0x80,0x10	///! Addressing setting. Set higher nibble of column start address. Only page addressing mode
@@ -56,13 +50,13 @@
 #define S1306_VCOM_DESELECT 		0x80,0xDB	///! Timing & Driving scheme. This is a double command (0xDB Command + Data)
 #define S1306_PRECHARGE_PERIOD 		0x80,0xD9	///! Timing & Driving scheme. This is a double command (0xD9 Command + Data)
 #define	S1306_DISP_ON				0x00,0xAF	///! Fundamental command. Set display on (in normal mode), last command sent (0x00)
+#define S1306_NOP					0x00,0xE3	///! No operation command
 
 ///! Append for data packets (Continuosly sending data bytes)
 #define	S1306_CMD_END_2RAM			0x40		///! End command transmision. Following bytes are data bytes to be stored at GDDRA
 #define S1306_CMD_ONLY				0x00		///! End command transmision. Following bytes are command bytes
 
 ///! Separated command values
-#define START_PAGE_VAL				0xB0
 
 ///! Command data value
 #define S1306_DISP_CLK_RATIO_VAL	0x80,0x80	///! Follows S1306_DISP_CLK_DIV_RATIO command. Formal ratio value
@@ -96,7 +90,7 @@
 								S1306_VCOM_DESELECT,S1306_VCOM_DESELECT_VAL,
 								S1306_DISP_ON};	///! Last command
 */
-static uint8_t ssdInitDatagram[] = {
+static uint8_t ssd1306_init_cfg[] = {
 								S1306_DISP_OFF,
 								S1306_DISP_CLK_DIV_RATIO,S1306_DISP_CLK_RATIO_VAL,
 								S1306_MULT_RATIO,S1306_MULT_RATIO_VAL,
@@ -120,6 +114,6 @@ static uint8_t ssdInitDatagram[] = {
 static void oled_i2c_write(uint8_t*, uint8_t);
 static void ssdOledSendCmd(uint8_t);
 static void ssdOledSendData(uint8_t);
-static void ssdOledSendAscii(uint8_t);
+static void ssd1306_print_ascii(uint8_t);
 
 #endif /* __SSD1306_INC_SSD1306_H__ */
