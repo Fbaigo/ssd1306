@@ -2,8 +2,6 @@
  *  @file 	   ssd1306.h
  *  @brief     SSD1306 128x32 / 128x64 OLED library.
  *  @details   User can set different parameters detailed below.
- *  		   If an OS is used set QC_FRTOS to 1 (only portable for FreeRTOS)
- *  		   If dynamic image generation is needed set QC_MEM_DYN to 1
  *
  *			   Header files:
  *			   qc12864b.h 	Functionality configuration for QC12864B LCD control
@@ -13,7 +11,7 @@
  *			   qcLCD.h		Application header file for QC12864B usage.
  *	@warning   Needs to be edited by the user accordingly
  *  @author    Federico Baigorria
- *  @date      06-11-2020
+ *  @date      11-29-2025
  *  @copyright GNU Public License.
  */
 
@@ -22,9 +20,37 @@
 
 ///! Self header files
 #include <stdint.h>
-#include "ssd_hw_iface.h"
-#include "ssd_fonts.h"
-#include "ssdTypes.h"
+
+#define USING_128X64_OLED					1			///! OLED Display maximum height (in pages). For a 128x32 is set to 4 and for 128x64 it's 8
+
+#if USING_128X64_OLED
+	typedef enum {
+		S1306_PAGE0,
+		S1306_PAGE1,
+		S1306_PAGE2,
+		S1306_PAGE3,
+		S1306_PAGE4,
+		S1306_PAGE5,
+		S1306_PAGE6,
+		S1306_PAGE7,
+		S1306_MAX_PAGE
+	} ssd1306_pages;
+#else
+	typedef enum {
+		S1306_PAGE0,
+		S1306_PAGE1,
+		S1306_PAGE2,
+		S1306_PAGE3,
+		S1306_MAX_PAGE
+	} ssd1306_pages;
+#endif
+
+///! Page offseting
+#define	S1306_X_START_OFFS					16			///! X axis offset for page offset setting. User editable
+#define	S1306_X_END_OFFS					16			///! X axis offset for page offset setting. User editable
+
+typedef void (*i2c_write_fn)(uint32_t const, uint8_t*, uint32_t);
+typedef void (*i2c_hw_init_fn)(void);
 
 ///! Default slave address for SSD1306 Oled display
 #define	S1306_SLAVE_ADDR			0x3C		///! 7 bits long address 011110(SAO). SAO bit may be 0 o 1. Default val 0x3C
@@ -69,51 +95,16 @@
 #define S1306_MEM_ADDR_MODE_VAL		0x80,0x02	///! Follows S1306_MEM_ADDR_MODE command. Page addressing mode
 #define S1306_PRECHARGE_PERIOD_VAL	0x80,0x22	///! Follows S1306_PRECHARGE_PERIOD command. Phase periods.
 
-///! SSD1306 Init datagram transmission buffer. Configure according to users need
-/*static uint8_t ssdInitDatagram[] = {
-								S1306_DISP_OFF,
-								S1306_DISP_CLK_DIV_RATIO,S1306_DISP_CLK_RATIO_VAL,
-								S1306_MULT_RATIO,S1306_MULT_RATIO_VAL,
-								S1306_DISP_OFFSET,S1306_DISP_OFFSET_VAL,
-								S1306_CHARGE_PUMP,S1306_CHARGE_PUMP_VAL,
-								S1306_START_LINE_ADDR,
-								S1306_MEM_ADDR_MODE,S1306_MEM_ADDR_MODE_VAL,
-								S1306_START_PAGE_ADDR,
-								S1306_PAGE_LOWER_COL,
-								S1306_PAGE_HIGHER_COL,
-								S1306_NORMAL_MODE,
-								S1306_DISP_ALL_ON_DIS,
-								S1306_SEGMNT_NO_REMAP,
-								S1306_COM_SCAN_DIR,
-								S1306_SET_COM_PINS,S1306_SET_COM_PINS_VAL,
-								S1306_CONTRAST_CTRL,S1306_CONTRAST_CTRL_VAL,
-								S1306_VCOM_DESELECT,S1306_VCOM_DESELECT_VAL,
-								S1306_DISP_ON};	///! Last command
-*/
-static uint8_t ssd1306_init_cfg[] = {
-								S1306_DISP_OFF,
-								S1306_DISP_CLK_DIV_RATIO,S1306_DISP_CLK_RATIO_VAL,
-								S1306_MULT_RATIO,S1306_MULT_RATIO_VAL,
-								S1306_DISP_OFFSET,S1306_DISP_OFFSET_VAL,
-								S1306_CHARGE_PUMP,S1306_CHARGE_PUMP_VAL,
-								S1306_START_LINE_ADDR,
-								S1306_MEM_ADDR_MODE,S1306_MEM_ADDR_MODE_VAL,
-								S1306_START_PAGE_ADDR,
-								S1306_PAGE_LOWER_COL,
-								S1306_PAGE_HIGHER_COL,
-								S1306_NORMAL_MODE,
-								S1306_DISP_ALL_ON_DIS,
-								S1306_SEGMNT_NO_REMAP,
-								S1306_COM_SCAN_DIR,
-								S1306_SET_COM_PINS,S1306_SET_COM_PINS_VAL,
-								S1306_CONTRAST_CTRL,S1306_CONTRAST_CTRL_VAL,
-								S1306_VCOM_DESELECT,S1306_VCOM_DESELECT_VAL,
-								S1306_DISP_ON};	///! Last command
-								
-///! Private functions
-static void oled_i2c_write(uint8_t*, uint8_t);
-static void ssdOledSendCmd(uint8_t);
-static void ssdOledSendData(uint8_t);
-static void ssd1306_print_ascii(uint8_t);
+void ssd1306_device_startup(uint32_t const slave_addr, i2c_write_fn writer_fn, i2c_hw_init_fn hw_init_fn);
+void ssd1306_print_ascii(uint8_t ascii_char);
+void ssd1306_set_page_offset(ssd1306_pages page, uint8_t column_addr);
+void ssd1306_page_clear(ssd1306_pages page);
+void ssd1306_display_clear(void);
+void ssd1306_print_text(uint8_t *text, uint8_t en_page_change);
+
+//void ssdOledSetSymbol(uint8_t);
+//void ssdOnResetMsg(uint8_t *);
+//void ssdOledBarGraph(void);
+//void ssdOledUpdateBar(uint8_t);
 
 #endif /* __SSD1306_INC_SSD1306_H__ */

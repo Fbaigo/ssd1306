@@ -32,9 +32,8 @@
 
 #include <stdint.h>
 
-///! SSD1306 hardware limit
-#define S1306_MAX_SEGMENT			128		///! OLED Display maximum width (fixed)
-#define S1306_MAX_PAGE				8		///! OLED Display maximum height (in pages). For a 128x32 set 4 and for 128x64 it's 8
+///! Hardware (display)
+#define S1306_MAX_SEGMENT					128			///! OLED Display maximum width (fixed, do not edit)
 
 ///! Fonts
 #define SSD1306_ASCII_DIGITAL5X7_FONT		0
@@ -254,6 +253,8 @@ const uint8_t ssd1306_font[][SSD1306_FONT_CHAR_WIDTH]=
 
 #if SSD1306_SYMBOLS_FONT
 #define SSD1306_FONT_SYMBOL_WIDTH		6
+
+//#define S1306_HORIZONTAL_BAR_LIMIT 		S1306_MAX_SEGMENT - S1306_X_START_OFFS - S1306_X_END_OFFS	///! For the bar graph animation
 
 const uint8_t ssd1306_symbols[][SSD1306_FONT_SYMBOL_WIDTH] = {
 	{0xFC, 0xFC, 0xFC, 0xF8, 0xF0, 0xE0}, // SD card
