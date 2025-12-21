@@ -1,4 +1,4 @@
-#include "ssd_hw_iface.h"
+#include "../inc/ssd_hw_iface.h"
 
 /**
  * @file		ssd_hw_iface.c
@@ -123,3 +123,45 @@ void esp8266_i2c_init(void){
 }
 
 #endif
+
+#if USING_STM32F1XX
+I2C_HandleTypeDef hi2c1;
+
+void stm32f1xx_master_tx_cplt_cb(I2C_HandleTypeDef *hi2c){
+	return;
+}
+
+void stm32f1xx_master_error_cb(I2C_HandleTypeDef *hi2c){
+	uint32_t flag = HAL_I2C_GetError(hi2c);
+	return;
+}
+
+/**
+ * HAL_I2C_Master_Transmit_IT(&hi2c1, (uint16_t) (slave_addr << 1), data, (uint16_t) nbytes)
+ * needs a different approach and method for handling interruption
+ * Current implementation is intended to be blocking
+ */
+void stm32f1xx_i2c_write(uint32_t const slave_addr, uint8_t *data, uint32_t nbytes){
+	uint32_t timeout = 0xffff;
+	HAL_I2C_Master_Transmit(&hi2c1, (uint16_t) (slave_addr << 1), data, (uint16_t) nbytes, timeout);
+}
+
+void stm32f1xx_i2c_init(void){
+	hi2c1.Instance = I2C1;
+	hi2c1.Init.ClockSpeed = 100000;
+	hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
+	hi2c1.Init.OwnAddress1 = 0;
+	hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+	hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+	hi2c1.Init.OwnAddress2 = 0;
+	hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+	hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+	HAL_I2C_Init(&hi2c1);
+
+	(void) HAL_I2C_RegisterCallback(&hi2c1, HAL_I2C_ERROR_CB_ID, stm32f1xx_master_error_cb);
+	//(void) HAL_I2C_RegisterCallback(&hi2c1, HAL_I2C_MASTER_TX_COMPLETE_CB_ID, stm32f1xx_master_tx_cplt_cb);
+}
+
+#endif
+
+

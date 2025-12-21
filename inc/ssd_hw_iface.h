@@ -15,8 +15,9 @@
 
 #include <stdint.h>
 
-#define USING_ESP8266X	1
-#define USING_LPC1769	0
+#define USING_STM32F1XX		1
+#define USING_ESP8266X		0
+#define USING_LPC1769		0
 
 #if USING_LPC1769
 
@@ -43,6 +44,13 @@ void lpc1769_i2c_init(void);
 void esp8266_i2c_write(uint32_t const slave_addr, uint8_t *data, uint32_t nbytes);
 void esp8266_i2c_init(void);
 
+#endif
+
+#if USING_STM32F1XX
+#include "stm32f1xx_hal.h"
+
+void stm32f1xx_i2c_write(uint32_t const slave_addr, uint8_t *data, uint32_t nbytes);
+void stm32f1xx_i2c_init(void);
 #endif
 
 #endif /* __SSD_HW_IFACE_H__ */
