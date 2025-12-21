@@ -184,6 +184,7 @@ void ssd1306_display_clear(void){
 * 
 * @warning
 * Use this function only when the SSD1306 has been set to page mapping mode
+* String text must be NULL terminated
 * 
 * @param text String to be printed
 * @param en_page_change Page change enable flag 
@@ -195,6 +196,14 @@ void ssd1306_print_text(uint8_t *text, uint8_t en_page_change){
 	uint8_t char_counter = 0;
 
 	while(*text){
+		if(*text == '\n'){
+			page++; page %= S1306_MAX_PAGE;
+			ssd1306_set_page_offset(page, 0x00);
+			ssd1306_page_clear(page);
+			text++;
+			continue;
+		}
+
 		ssd1306_print_ascii(*text);
 		text++;
 		
@@ -202,6 +211,7 @@ void ssd1306_print_text(uint8_t *text, uint8_t en_page_change){
 			char_counter = 0;
 			page++; page %= S1306_MAX_PAGE;
 			ssd1306_set_page_offset(page, 0x00);
+			ssd1306_page_clear(page);
 		}
 		else {
 			char_counter++;
