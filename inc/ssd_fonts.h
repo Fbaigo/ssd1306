@@ -254,8 +254,6 @@ const uint8_t ssd1306_font[][SSD1306_FONT_CHAR_WIDTH]=
 #if SSD1306_SYMBOLS_FONT
 #define SSD1306_FONT_SYMBOL_WIDTH		6
 
-//#define S1306_HORIZONTAL_BAR_LIMIT 		S1306_MAX_SEGMENT - S1306_X_START_OFFS - S1306_X_END_OFFS	///! For the bar graph animation
-
 const uint8_t ssd1306_symbols[][SSD1306_FONT_SYMBOL_WIDTH] = {
 	{0xFC, 0xFC, 0xFC, 0xF8, 0xF0, 0xE0}, // SD card
 	{0xFC, 0xAC, 0xAC, 0xAC, 0xAC, 0xFC}, // File
