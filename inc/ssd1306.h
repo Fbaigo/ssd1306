@@ -57,8 +57,15 @@ void ssd1306_display_clear(void);
 void ssd1306_print_ascii(uint8_t ascii_char);
 void ssd1306_print_text(uint8_t *text, uint8_t en_page_change);
 
+///! Tests
+void ssd1306_display_all_on_test(void);
+void ssd1306_display_resume_test(void);
+
 ///! Graphics
 void ssd1306_static_horizontal_bar(ssd1306_pages_t at_page, uint32_t x_start_loc, uint32_t x_bar_len, double percent_fill);
 void ssd1306_print_symbol(ssd1306_symbols_t ssd_symbol, ssd1306_pages_t at_page, uint32_t x_loc);
+void ssd1306_scroll_enable(void);
+void ssd1306_scroll_disable(void);
+void ssd1306_v_cont_scroll_setup(ssd1306_pages_t start_page, ssd1306_pages_t end_page);
 
 #endif /* __SSD1306_INC_SSD1306_H__ */

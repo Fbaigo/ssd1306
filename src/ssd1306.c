@@ -16,6 +16,15 @@
 #include "ssd1306.h"
 #include "ssd_fonts.h"
 
+/**
+ * If the Co bit is set as logic “0”, the transmission of the following information will contain
+ * data bytes only.
+ * The D/C# bit determines the next data byte is acted as a command or a data. If the D/C# bit is
+ * set to logic “0”, it defines the following data byte as a command else it's data to be stored at the GDDRAM
+ *
+ * Sends a control byte before each data/command byte. Control byte is formed as C0-D/C-000000 (0x80)
+ */
+
 ///! Commands sent continuously.Packet: (Control byte - Command byte)
 #define S1306_DISP_OFF				0x80,0xAE	///! Fundamental command. Set display off (sleep mode)
 #define S1306_DISP_CLK_DIV_RATIO	0x80,0xD5 	///! Timing & Driving scheme. This is a double command (0xD5 Command + Data)
@@ -30,6 +39,11 @@
 #define S1306_START_PAGE_ADDR		0x80,0xB0	///! Addressing setting. Set start page address at Page 0. Only page addressing mode
 #define S1306_NORMAL_MODE 			0x80,0xA6	///! Fundamental command. Set display in normal mode (positive logic)
 #define S1306_DISP_ALL_ON_DIS 		0x80,0xA4 	///! Fundamental command. Disable entire display ON, depends on RAM content
+#define S1306_DISP_ALL_ON_EN 		0x80,0xA5 	///! Fundamental command. Forces the entire display ON, regardless of RAM content
+#define S1306_SCROLL_EN				0x80,0x2F	///! Fundamental command. Enables scroll motion. Must be called after configuring the scroll setup (0x29/0x2A)
+#define S1306_SCROLL_DIS			0x80,0x2E	///! Fundamental command. Disables scroll motion. RAM data needs to be rewritten
+#define S1306_CONT_VERT_SCROLL		0x80,0x29
+#define S1306_CONT_HORZ_SCROLL		0x80,0x2A
 #define S1306_SEGMNT_NO_REMAP 		0x80,0xA0	///! Hardware configuration. Column address 127 is mapped to SEG0
 #define S1306_COM_SCAN_DIR 			0x80,0xC0	///! Hardware configuration. Normal mode
 #define S1306_SET_COM_PINS 			0x80,0xDA	///! Hardware configuration. This is a double command (0xDA Command + Data)
@@ -262,10 +276,48 @@ void ssd1306_print_text(uint8_t *text, uint8_t en_page_change){
 	}
 }
 
+
+/**
+ * Tests
+ */
+void ssd1306_display_all_on_test(void){
+	uint8_t cmd_packet[] = {S1306_DISP_ALL_ON_EN};
+	ssd1306_i2c_write(cmd_packet, sizeof(cmd_packet)/sizeof(uint8_t));
+}
+
+void ssd1306_display_resume_test(void){
+	uint8_t cmd_packet[] = {S1306_DISP_ALL_ON_DIS};
+	ssd1306_i2c_write(cmd_packet, sizeof(cmd_packet)/sizeof(uint8_t));
+}
+
 /**
  * Graphics
  */
 
+void ssd1306_scroll_enable(void){
+	uint8_t cmd_packet[] = {S1306_SCROLL_EN};
+	ssd1306_i2c_write(cmd_packet, sizeof(cmd_packet)/sizeof(uint8_t));
+}
+
+void ssd1306_scroll_disable(void){
+	uint8_t cmd_packet[] = {S1306_SCROLL_DIS};
+	ssd1306_i2c_write(cmd_packet, sizeof(cmd_packet)/sizeof(uint8_t));
+}
+
+void ssd1306_v_cont_scroll_setup(ssd1306_pages_t start_page, ssd1306_pages_t end_page){
+	uint8_t dummy_byte = 0x00;
+	uint8_t frame_i = 0;
+	uint8_t v_scroll_offs = 0x01;
+
+	uint8_t cmd_packet[] = {S1306_CONT_VERT_SCROLL,
+			0x80,dummy_byte,
+			0x80,start_page,
+			0x80,frame_i,
+			0x80,end_page,
+			0x80,v_scroll_offs
+	};
+	ssd1306_i2c_write(cmd_packet, sizeof(cmd_packet)/sizeof(uint8_t));
+}
 /**
 * @fn void ssd1306_static_horizontal_bar(uint8_t at_page, uint32_t x_start_loc, uint32_t x_bar_len, double percent_fill)
 * @brief Prints a horizontal bar filled at a given percentage
