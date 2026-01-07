@@ -42,8 +42,10 @@
 #define S1306_DISP_ALL_ON_EN 		0x80,0xA5 	///! Fundamental command. Forces the entire display ON, regardless of RAM content
 #define S1306_SCROLL_EN				0x80,0x2F	///! Fundamental command. Enables scroll motion. Must be called after configuring the scroll setup (0x29/0x2A)
 #define S1306_SCROLL_DIS			0x80,0x2E	///! Fundamental command. Disables scroll motion. RAM data needs to be rewritten
-#define S1306_CONT_VERT_SCROLL		0x80,0x29
-#define S1306_CONT_HORZ_SCROLL		0x80,0x2A
+#define S1306_CONT_VERT_RH_SCROLL	0x29		///! Continuous vertical and right horizontal scroll
+#define S1306_CONT_VERT_LH_SCROLL	0x2A		///! Continuous vertical and left horizontal scroll
+#define S1306_CONT_HORZ_R_SCROLL	0x26		///! Continuous right horizontal scroll
+#define S1306_CONT_HORZ_L_SCROLL	0x27		///! Continuous left horizontal scroll
 #define S1306_SEGMNT_NO_REMAP 		0x80,0xA0	///! Hardware configuration. Column address 127 is mapped to SEG0
 #define S1306_COM_SCAN_DIR 			0x80,0xC0	///! Hardware configuration. Normal mode
 #define S1306_SET_COM_PINS 			0x80,0xDA	///! Hardware configuration. This is a double command (0xDA Command + Data)
@@ -285,7 +287,7 @@ void ssd1306_display_all_on_test(void){
 	ssd1306_i2c_write(cmd_packet, sizeof(cmd_packet)/sizeof(uint8_t));
 }
 
-void ssd1306_display_resume_test(void){
+void ssd1306_display_resume(void){
 	uint8_t cmd_packet[] = {S1306_DISP_ALL_ON_DIS};
 	ssd1306_i2c_write(cmd_packet, sizeof(cmd_packet)/sizeof(uint8_t));
 }
@@ -304,20 +306,89 @@ void ssd1306_scroll_disable(void){
 	ssd1306_i2c_write(cmd_packet, sizeof(cmd_packet)/sizeof(uint8_t));
 }
 
-void ssd1306_v_cont_scroll_setup(ssd1306_pages_t start_page, ssd1306_pages_t end_page){
-	uint8_t dummy_byte = 0x00;
-	uint8_t frame_i = 0;
-	uint8_t v_scroll_offs = 0x01;
+/**
+* @fn void ssd1306_vh_cont_scroll_setup(ssd1306_pages_t start_page, ssd1306_pages_t end_page)
+* @brief Configures the display in vertical and horizontal continuous scroll
+* @details
+* Writes a given message to the OLED display.
+* If enabled, after writing the maximum allowed number of characters per line it will
+* automatically switch to the next page.
+*
+* @warning
+* There is no vertical continuous scroll. It will always scroll 1 column per frame frequency
+*
+* @param text String to be printed
+* @param en_page_change Page change enable flag
+* @return void
+*/
 
-	uint8_t cmd_packet[] = {S1306_CONT_VERT_SCROLL,
+void ssd1306_vh_cont_scroll_setup(ssd1306_pages_t start_page, ssd1306_pages_t end_page,
+		ssd1306_frame_int_t frame_int, uint8_t v_scroll_offs, ssd1306_horz_side_scroll_t h_scroll)
+{
+	uint8_t dummy_byte = 0x00;
+	uint8_t side_scroll_cmd;
+
+	if(h_scroll == RH_SCROLL_EN)
+		side_scroll_cmd = S1306_CONT_VERT_RH_SCROLL;
+	else{
+		side_scroll_cmd = S1306_CONT_VERT_LH_SCROLL;
+	}
+
+	uint8_t cmd_packet[] = {
+			0x80,side_scroll_cmd,
 			0x80,dummy_byte,
 			0x80,start_page,
-			0x80,frame_i,
+			0x80,(uint8_t) frame_int,
 			0x80,end_page,
-			0x80,v_scroll_offs
+			0x80,v_scroll_offs,
 	};
 	ssd1306_i2c_write(cmd_packet, sizeof(cmd_packet)/sizeof(uint8_t));
 }
+
+void ssd1306_h_cont_scroll_setup(ssd1306_pages_t start_page, ssd1306_pages_t end_page, ssd1306_frame_int_t frame_int, ssd1306_horz_side_scroll_t h_scroll){
+	uint8_t side_scroll_cmd = (h_scroll == RH_SCROLL_EN) ? S1306_CONT_HORZ_R_SCROLL : S1306_CONT_HORZ_L_SCROLL;
+
+	///! Hard coded values are dummy bytes
+	uint8_t cmd_packet[] = {
+			0x80,side_scroll_cmd,
+			0x80,0x00,
+			0x80,start_page,
+			0x80,(uint8_t) frame_int,
+			0x80, end_page,
+			0x80,0x00,
+			0x80,0xFF,
+	};
+	ssd1306_i2c_write(cmd_packet, sizeof(cmd_packet)/sizeof(uint8_t));
+}
+
+void ssd1306_inverse_display_mode(){
+	uint8_t cmd_packet[] = {
+		0x80, 0xA7
+	};
+	ssd1306_i2c_write(cmd_packet, sizeof(cmd_packet)/sizeof(uint8_t));
+}
+
+void ssd1306_normal_display_mode(){
+	uint8_t cmd_packet[] = {
+		0x80, 0xA6
+	};
+	ssd1306_i2c_write(cmd_packet, sizeof(cmd_packet)/sizeof(uint8_t));
+}
+
+///! Do not use for now
+void ssd1306_set_v_addressing_mode(){
+	uint8_t cmd_packet[] = {S1306_MEM_ADDR_MODE,
+			0x80,0x01,
+			0x80,0x21,
+			0x80,0x00,
+			0x80,0x7F,
+			0x80,0x22,
+			0x80,0x00,
+			0x80,0x07
+	};
+	ssd1306_i2c_write(cmd_packet, sizeof(cmd_packet)/sizeof(uint8_t));
+}
+
 /**
 * @fn void ssd1306_static_horizontal_bar(uint8_t at_page, uint32_t x_start_loc, uint32_t x_bar_len, double percent_fill)
 * @brief Prints a horizontal bar filled at a given percentage

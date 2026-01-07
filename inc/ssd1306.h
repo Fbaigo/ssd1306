@@ -48,6 +48,8 @@
 typedef void (*i2c_write_fn)(uint32_t const, uint8_t*, uint32_t);
 typedef void (*i2c_hw_init_fn)(void);
 typedef enum {SYM_SDCARD, SYM_FILE, SYM_NOSYMBOL, SYM_TOTAL} ssd1306_symbols_t;
+typedef enum {VH_2FRAMES=7, VH_3FRAMES=4, VH_4FRAMES=5, VH_5FRAMES=0, VH_25FRAMES=6, VH_64FRAMES=1, VH_128FRAMES=2, VH_256FRAMES=3} ssd1306_frame_int_t;
+typedef enum {LH_SCROLL_EN, RH_SCROLL_EN} ssd1306_horz_side_scroll_t;
 
 ///! Common
 void ssd1306_device_startup(uint32_t const slave_addr, i2c_write_fn writer_fn, i2c_hw_init_fn hw_init_fn);
@@ -59,13 +61,17 @@ void ssd1306_print_text(uint8_t *text, uint8_t en_page_change);
 
 ///! Tests
 void ssd1306_display_all_on_test(void);
-void ssd1306_display_resume_test(void);
+void ssd1306_display_resume(void);
 
 ///! Graphics
 void ssd1306_static_horizontal_bar(ssd1306_pages_t at_page, uint32_t x_start_loc, uint32_t x_bar_len, double percent_fill);
 void ssd1306_print_symbol(ssd1306_symbols_t ssd_symbol, ssd1306_pages_t at_page, uint32_t x_loc);
 void ssd1306_scroll_enable(void);
 void ssd1306_scroll_disable(void);
-void ssd1306_v_cont_scroll_setup(ssd1306_pages_t start_page, ssd1306_pages_t end_page);
+void ssd1306_vh_cont_scroll_setup(ssd1306_pages_t start_page, ssd1306_pages_t end_page, ssd1306_frame_int_t frame_int, uint8_t v_scroll_offs, ssd1306_horz_side_scroll_t h_scroll);
+void ssd1306_h_cont_scroll_setup(ssd1306_pages_t start_page, ssd1306_pages_t end_page, ssd1306_frame_int_t frame_int, ssd1306_horz_side_scroll_t h_scroll);
+void ssd1306_set_v_addressing_mode(void);
+void ssd1306_inverse_display_mode(void);
+void ssd1306_normal_display_mode(void);
 
 #endif /* __SSD1306_INC_SSD1306_H__ */
