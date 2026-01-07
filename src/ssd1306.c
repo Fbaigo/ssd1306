@@ -107,6 +107,21 @@ static uint8_t ssd1306_init_cfg[] = {
 								S1306_VCOM_DESELECT,S1306_VCOM_DESELECT_VAL,
 								S1306_DISP_ON};	///! Last command
 
+/**
+* @fn static void ssd1306_i2c_write(uint8_t *data, uint32_t bytes)
+* @brief SSD1306 HAL I2C write function
+* @details
+* This is the SSD1306 I2C write function regardless of the hardware
+*
+* @warning
+* This function must NOT be called by the end user
+* ssd1306_device_startup() function must be called first so the SSD1306 device abstraction
+* has a valid I2C write function
+*
+* @param data point to a buffer of I2C frames
+* @param bytes number of bytes to be written
+* @return void
+*/
 static void ssd1306_i2c_write(uint8_t *data, uint32_t bytes){
 	ssd1306_device.i2c_write(
 		ssd1306_device.slave_addr,
@@ -115,6 +130,25 @@ static void ssd1306_i2c_write(uint8_t *data, uint32_t bytes){
 	);
 }
 
+/**
+* @fn static void ssd1306_gddr_write(uint8_t pixel){
+* @brief RAM's DATA writer function
+* @details
+* This function allows to write data to the graphic RAM in order to plot the screen
+* The pixel argument is actually the column to be plot at a given row/page coordinate
+* Since there are 8 pages and each page is 8 bits height we have a total of 64 bits of height
+* In normal mode a '1' will turn ON the pixel and a '0' will turn it OFF
+*
+* For instance 0xFF will turn ON all 8 vertical pixels in a given row/page if the
+* display is in page mode and normal mode
+*
+* @warning
+* This function must NOT be called by the end user but
+* must be use by graphic functions for plotting such as ssd1306_page_clear()
+*
+* @param pixel Column to be plot
+* @return void
+*/
 static void ssd1306_gddr_write(uint8_t pixel){
 	uint8_t data[] = {S1306_CMD_END_2RAM, pixel};
 	ssd1306_i2c_write(data, sizeof(data)/sizeof(uint8_t));
@@ -282,11 +316,30 @@ void ssd1306_print_text(uint8_t *text, uint8_t en_page_change){
 /**
  * Tests
  */
+
+/**
+* @fn void ssd1306_display_all_on_test(void)
+* @brief Turns the entire display ON
+* @details
+* Turns ON the entire display regardless of the RAM's DATA content
+* Useful for testing the display integrity
+*
+* @return void
+*/
 void ssd1306_display_all_on_test(void){
 	uint8_t cmd_packet[] = {S1306_DISP_ALL_ON_EN};
 	ssd1306_i2c_write(cmd_packet, sizeof(cmd_packet)/sizeof(uint8_t));
 }
 
+/**
+* @fn void ssd1306_display_resume(void)
+* @brief Resets the display's driver mode
+* @details
+* Returns the display in its normal mode turning the driver ON and OFF
+* depending on its RAM's DATA content
+*
+* @return void
+*/
 void ssd1306_display_resume(void){
 	uint8_t cmd_packet[] = {S1306_DISP_ALL_ON_DIS};
 	ssd1306_i2c_write(cmd_packet, sizeof(cmd_packet)/sizeof(uint8_t));
@@ -296,29 +349,53 @@ void ssd1306_display_resume(void){
  * Graphics
  */
 
+/**
+* @fn void ssd1306_scroll_enable(void)
+* @brief Enables display's scroll motion
+* @details
+* Starts the motion of scrolling being only horizontal or vertical and horizontal.
+* Only one scroll motion can be selected
+*
+* @return void
+*/
 void ssd1306_scroll_enable(void){
 	uint8_t cmd_packet[] = {S1306_SCROLL_EN};
 	ssd1306_i2c_write(cmd_packet, sizeof(cmd_packet)/sizeof(uint8_t));
 }
 
+/**
+* @fn void ssd1306_inverse_display_mode(void)
+* @brief Disables display's scroll motion
+* @details
+* Stops the scrolling motion. RAM's DATA must be rewritten or cleared.
+*
+* @return void
+*/
 void ssd1306_scroll_disable(void){
 	uint8_t cmd_packet[] = {S1306_SCROLL_DIS};
 	ssd1306_i2c_write(cmd_packet, sizeof(cmd_packet)/sizeof(uint8_t));
 }
 
 /**
-* @fn void ssd1306_vh_cont_scroll_setup(ssd1306_pages_t start_page, ssd1306_pages_t end_page)
+* @fn void  ssd1306_vh_cont_scroll_setup(ssd1306_pages_t start_page, ssd1306_pages_t end_page, ssd1306_frame_int_t frame_int, uint8_t v_scroll_offs, ssd1306_horz_side_scroll_t h_scroll)
 * @brief Configures the display in vertical and horizontal continuous scroll
 * @details
-* Writes a given message to the OLED display.
-* If enabled, after writing the maximum allowed number of characters per line it will
-* automatically switch to the next page.
+* Configures the display in vertical and horizontal scroll motion. At every frame_int interval
+* the RAM data will be scrolled 1 row and 1 column in the selected direction (h_scroll) being
+* to the horizontal left or to the horizontal right. Vertical scroll is always up regardless of remap.
+*
+* The start and end of page scrolling limit the area in which RAM data is scrolled. Not the entire
+* screen area must be scrolled.
 *
 * @warning
 * There is no vertical continuous scroll. It will always scroll 1 column per frame frequency
+* Scroll must be disabled before editing RAM with new data since it will corrupt it's content
 *
-* @param text String to be printed
-* @param en_page_change Page change enable flag
+* @param start_page 	Start of page scroll. Use ssd1306_pages_t type
+* @param end_page 		End of page scroll. Use ssd1306_pages_t type
+* @param frame_int 		Frame interval or update frequency. Use ssd1306_frame_int_t type
+* @param v_scroll_offs	Vertical scroll offset
+* @param h_scroll 		Horizontal scroll direction, can be left or right. Use ssd1306_horz_side_scroll_t type
 * @return void
 */
 
@@ -345,6 +422,26 @@ void ssd1306_vh_cont_scroll_setup(ssd1306_pages_t start_page, ssd1306_pages_t en
 	ssd1306_i2c_write(cmd_packet, sizeof(cmd_packet)/sizeof(uint8_t));
 }
 
+/**
+* @fn void  ssd1306_h_cont_scroll_setup(ssd1306_pages_t start_page, ssd1306_pages_t end_page, ssd1306_frame_int_t frame_int, ssd1306_horz_side_scroll_t h_scroll)
+* @brief Configures the display in horizontal continuous scroll
+* @details
+* Configures the display in horizontal scroll motion. At every frame_int interval
+* the RAM data will be scrolled 1 column in the selected direction (h_scroll) being
+* to the horizontal left or to the horizontal right.
+*
+* The start and end of page scrolling limit the area in which RAM data is scrolled. Not the entire
+* screen area must be scrolled.
+*
+* @warning
+* Scroll must be disabled before editing RAM with new data since it will corrupt it's content
+*
+* @param start_page 	Start of page scroll. Use ssd1306_pages_t type
+* @param end_page 		End of page scroll. Use ssd1306_pages_t type
+* @param frame_int 		Frame interval or update frequency. Use ssd1306_frame_int_t type
+* @param h_scroll 		Horizontal scroll direction, can be left or right. Use ssd1306_horz_side_scroll_t type
+* @return void
+*/
 void ssd1306_h_cont_scroll_setup(ssd1306_pages_t start_page, ssd1306_pages_t end_page, ssd1306_frame_int_t frame_int, ssd1306_horz_side_scroll_t h_scroll){
 	uint8_t side_scroll_cmd = (h_scroll == RH_SCROLL_EN) ? S1306_CONT_HORZ_R_SCROLL : S1306_CONT_HORZ_L_SCROLL;
 
@@ -361,6 +458,15 @@ void ssd1306_h_cont_scroll_setup(ssd1306_pages_t start_page, ssd1306_pages_t end
 	ssd1306_i2c_write(cmd_packet, sizeof(cmd_packet)/sizeof(uint8_t));
 }
 
+/**
+* @fn void ssd1306_inverse_display_mode(void)
+* @brief Inverts the display pixels "ON" state based on RAM's data content
+* @details
+* If inverse mode is set a '0' bit in RAM will turn "ON" a pixel and a '1' bit will turn it "OFF".
+* This function is useful for inverting plots
+*
+* @return void
+*/
 void ssd1306_inverse_display_mode(){
 	uint8_t cmd_packet[] = {
 		0x80, 0xA7
@@ -368,6 +474,15 @@ void ssd1306_inverse_display_mode(){
 	ssd1306_i2c_write(cmd_packet, sizeof(cmd_packet)/sizeof(uint8_t));
 }
 
+/**
+* @fn void ssd1306_normal_display_mode(void)
+* @brief Resets the display pixels "ON" state based on RAM's data content
+* @details
+* If normal mode is set a '0' bit in RAM will turn "OFF" a pixel and a '1' bit will turn it "ON".
+* This is the default behaviour
+*
+* @return void
+*/
 void ssd1306_normal_display_mode(){
 	uint8_t cmd_packet[] = {
 		0x80, 0xA6
@@ -388,6 +503,10 @@ void ssd1306_set_v_addressing_mode(){
 	};
 	ssd1306_i2c_write(cmd_packet, sizeof(cmd_packet)/sizeof(uint8_t));
 }
+
+/*
+ * Plots
+ */
 
 /**
 * @fn void ssd1306_static_horizontal_bar(uint8_t at_page, uint32_t x_start_loc, uint32_t x_bar_len, double percent_fill)
